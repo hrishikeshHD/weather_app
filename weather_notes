@@ -1,0 +1,95 @@
+# Weather App: Technical Architecture & Interview Guide
+
+This document serves as a comprehensive technical overview of the Weather Application, detailing its architecture, backend/frontend implementation, and core Spring Boot concepts. It is designed to be a dual-purpose repository guide and an interview preparation cheat sheet.
+
+---
+
+## 1. Project Architecture Overview
+
+This application follows a **Microservice-style Layered Architecture**. It acts as a Proxy/Wrapper API, sitting between the client (Browser/Postman) and a third-party data provider (WeatherAPI.com).
+
+
+
+* **Client:** `index.html` (Browser)
+* **API Layer:** `Controller.java` (Receives requests)
+* **Business Layer:** `WeatherService.java` (Logic, data transformation, external API calls)
+* **Data Layer:** External WeatherAPI (Source of truth)
+
+---
+
+## 2. Backend Deep Dive (Java & Spring Boot)
+
+### Core Components
+
+**Entry Point (`WeatherAppApplication.java`)**
+Annotated with `@SpringBootApplication`. This bootstraps the Spring context, sets up the embedded Tomcat server, and scans for components in the base package.
+
+**The Controller (`Controller.java`)**
+* **Role:** Request Handler. It defines the API contract.
+* **Endpoint:** `GET /weather/forecast/{city}?days={n}`
+* **Design Choice:** Contains zero business logic. It delegates work to the `WeatherService` to comply with the principle of Separation of Concerns.
+
+**The Service (`WeatherService.java`)**
+* **Role:** The "Brain" of the application.
+* **Task 1 (Consumption):** Uses an HTTP client (RestTemplate/WebClient) to hit `api.weatherapi.com`.
+* **Task 2 (Deserialization):** Converts raw JSON from the provider into the internal `Root` object structure.
+* **Task 3 (Transformation):** Simplifies deeply nested API data (Root $\rightarrow$ Forecast $\rightarrow$ ForecastDay $\rightarrow$ Day) into a clean, UI-ready `WeatherForCast` DTO.
+* **Task 4 (Sanitization):** Normalizes data (e.g., adding `https:` prefixes to icon URLs) to prevent frontend rendering issues.
+
+**DTOs (Data Transfer Objects)**
+* **Internal DTOs (`Root`, `Current`, `Location`):** Exact mirrors of the external WeatherAPI JSON structure. Acting as "dumb" data carriers.
+* **Response DTOs (`WeatherForCast`, `WeatherResponse`):** Custom objects designed specifically for the frontend's consumption, preventing over-fetching.
+
+### Key Concepts for Interviews
+
+* **Dependency Injection (DI):** The Controller requires the Service. Instead of manual instantiation (`new WeatherService()`), Spring injects it via `@Autowired`, ensuring loose coupling and testability.
+* **Inversion of Control (IoC):** Spring's Container manages the lifecycle and memory allocation of objects (Beans).
+* **Serialization/Deserialization:** The automated process (via the Jackson library) of converting Java Objects to JSON for HTTP responses, and vice-versa.
+
+---
+
+## 3. Frontend Deep Dive (Static Content)
+
+* **Location:** `src/main/resources/static/index.html`
+* **Technology:** Vanilla HTML, CSS, JavaScript (Fetch API)
+
+**Execution Flow:**
+1.  **Immediate:** Browser loads the static HTML and CSS.
+2.  **Async:** JavaScript executes `fetch('/weather/forecast/...')` in the background.
+3.  **Callback:** The `.then()` block executes upon receiving the backend response.
+4.  **DOM Manipulation:** JavaScript dynamically constructs HTML strings (e.g., `<div class='card'>...</div>`) and injects them into the DOM using `.innerHTML`.
+5.  **Design:** Utilizes CSS Grid/Flexbox for responsive forecast cards across various screen sizes.
+
+---
+
+## 4. Annotation Dictionary
+
+| Annotation | Location | Explanation |
+| :--- | :--- | :--- |
+| **`@SpringBootApplication`** | `WeatherAppApplication.java` | Combines `@Configuration`, `@EnableAutoConfiguration` (sets up Tomcat), and `@ComponentScan` (finds Controllers/Services). |
+| **`@RestController`** | `Controller.java` | Marks the class as a web controller returning Domain Objects (JSON). Combines `@Controller` and `@ResponseBody`. |
+| **`@RequestMapping`** | `Controller.java` | Sets the base URI path (e.g., `/weather`). Methods inside are relative to this path. |
+| **`@GetMapping`** | `Controller.java` | Maps HTTP GET requests to a specific method for fetching data. |
+| **`@Autowired`** | `Controller.java` | Triggers Dependency Injection to plug in a managed bean (e.g., `WeatherService`). |
+| **`@PathVariable`** | `Controller.java` | Binds a URL placeholder (e.g., `/Pune`) to a Java argument. Used for identifying specific resources. |
+| **`@RequestParam`** | `Controller.java` | Binds a query parameter (e.g., `?days=3`) to an argument. Used for filtering or configuration. |
+| **`@Service`** | `WeatherService.java` | Specialization of `@Component`. Marks the class as holding business logic for semantic readability. |
+| **`@JsonPropertyOrder`** | `WeatherForCast.java` | Instructs the Jackson serializer to output JSON fields in a specific order. |
+
+---
+
+## 5. Interview Q&A Cheat Sheet
+
+
+
+**Q1: Why did you create the `WeatherForCast` DTO instead of returning the `Root` object directly?**
+"To avoid over-fetching and tight coupling. The external API returns huge amounts of data (astronomical data, hourly breakdowns) that my UI does not need. By mapping it to a custom DTO, I reduce the payload size and protect my frontend. If the external API changes its structure, I only have to fix the backend Service, not the Frontend."
+
+**Q2: What is the difference between `@PathVariable` and `@RequestParam`?**
+"`@PathVariable` is for values that are a fundamental part of the resource's identity in the RESTful URI, like the city name (`/London`). `@RequestParam` is used for modifying or filtering the request, like setting a duration (`?days=3`)."
+
+**Q3: How do you handle secrets like API Keys in this project?**
+"I strictly separate configuration from code. API keys are stored in `src/main/resources/application.properties` and injected via `@Value`. In a real production environment, I would pass these as Environment Variables so the key is never hardcoded into the Git repository."
+
+**Q4: Explain the flow of a request in your application.**
+"The user clicks 'Search' $\rightarrow$ The Browser sends a GET request $\rightarrow$ The Spring `DispatcherServlet` routes it to my Controller $\rightarrow$ The Controller delegates to the `WeatherService` $\rightarrow$ The Service calls the External API $\rightarrow$ The Service processes the external JSON into my custom DTO $\rightarrow$ The DTO is returned to the Controller $\rightarrow$ Jackson converts it into JSON $\rightarrow$ The JSON is sent back to the Browser."
