@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather App</title>
+  <style>
+    :root {
+      --bg: #0b1224;
+      --card: #111a30;
+      --accent: #5dd0ff;
+      --accent-2: #7cf5c5;
+      --text: #e6eef7;
+      --muted: #9bb0c7;
+      --error: #ff6b6b;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(120% 120% at 0% 0%, rgba(93,208,255,0.08), transparent),
+                  radial-gradient(120% 120% at 100% 0%, rgba(124,245,197,0.08), transparent),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 32px 24px 8px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.4px;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr auto;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    input, select, button {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 14px;
+      transition: border-color 0.2s ease, transform 0.1s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(93,208,255,0.18);
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #0a0f1c;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      box-shadow: 0 10px 30px rgba(93,208,255,0.3);
+    }
+
+    button:active { transform: translateY(1px); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(120% 120% at 80% -10%, rgba(93,208,255,0.1), transparent);
+      pointer-events: none;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .metric {
+      margin: 4px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric strong { color: var(--text); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(93,208,255,0.12);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .error {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,107,107,0.4);
+      background: rgba(255,107,107,0.08);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .loader {
+      margin: 16px auto;
+      border: 3px solid rgba(255,255,255,0.12);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .section-title {
+      margin: 20px 0 10px;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 28px;
+      padding-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Weather Insights</h1>
+    <div class="subtitle"> Current Day </div>
+  </header>
+
+  <div class="container">
+    <div class="panel">
+      <div class="form-row">
+        <div>
+          <label for="city">City</label>
+          <input id="city" type="text" placeholder="e.g. Pune" value="Pune" />
+        </div>
+        <div>
+          <label for="days">Days (1-10)</label>
+          <select id="days">
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="7">7</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="fetchBtn">Fetch Weather</button>
+        </div>
+      </div>
+
+      <div id="error" class="error" style="display:none"></div>
+      <div id="loading" class="loader" style="display:none"></div>
+
+      <div id="currentSection" style="display:none">
+        <div class="section-title">Current Weather</div>
+        <div class="card">
+          <div class="card-title" style="align-items:flex-start; gap:10px;">
+            <div>
+              <div id="cityName">—</div>
+              <span id="condPill" class="pill">—</span>
+            </div>
+            <img id="iconImg" src="" alt="" style="width:56px;height:56px;display:none;" />
+          </div>
+          <div class="metric"><strong>Temperature:</strong> <span id="tempVal">—</span>°C</div>
+          <div class="metric"><strong>Region:</strong> <span id="regionVal">—</span></div>
+          <div class="metric"><strong>Country:</strong> <span id="countryVal">—</span></div>
+        </div>
+      </div>
+
+      <div id="forecastSection" style="display:none">
+        <div class="section-title">Forecast</div>
+        <div id="forecastGrid" class="grid"></div>
+      </div>
+    </div>
+
+    <footer>Powered by your Spring Boot backend at /weather/forecast</footer>
+  </div>
+
+  <script>
+    const cityInput = document.getElementById('city');
+    const daysSelect = document.getElementById('days');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const errorBox = document.getElementById('error');
+    const loader = document.getElementById('loading');
+    const currentSection = document.getElementById('currentSection');
+    const forecastSection = document.getElementById('forecastSection');
+    const forecastGrid = document.getElementById('forecastGrid');
+
+    const cityName = document.getElementById('cityName');
+    const condPill = document.getElementById('condPill');
+    const tempVal = document.getElementById('tempVal');
+    const regionVal = document.getElementById('regionVal');
+    const countryVal = document.getElementById('countryVal');
+    const iconImg = document.getElementById('iconImg');
+
+    function showError(msg) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = msg;
+    }
+
+    function hideError() {
+      errorBox.style.display = 'none';
+    }
+
+    function setLoading(isLoading) {
+      loader.style.display = isLoading ? 'block' : 'none';
+      fetchBtn.disabled = isLoading;
+    }
+
+    async function fetchWeather() {
+      hideError();
+      currentSection.style.display = 'none';
+      forecastSection.style.display = 'none';
+      forecastGrid.innerHTML = '';
+      setLoading(true);
+
+      const city = cityInput.value.trim();
+      const days = daysSelect.value;
+      if (!city) {
+        setLoading(false);
+        showError('Please enter a city.');
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/weather/forecast/${encodeURIComponent(city)}?days=${encodeURIComponent(days)}`);
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || `Request failed with status ${resp.status}`);
+        }
+        const data = await resp.json();
+        renderCurrent(data.weatherResponse);
+        renderForecast(data.dayTemp || []);
+      } catch (err) {
+        showError(err.message || 'Something went wrong.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderCurrent(w) {
+      if (!w) return;
+      cityName.textContent = `${w.city || ''}`;
+      condPill.textContent = w.condition || '—';
+      tempVal.textContent = w.temperature != null ? w.temperature.toFixed(1) : '—';
+      regionVal.textContent = w.region || '—';
+      countryVal.textContent = w.country || '—';
+      if (w.icon) {
+        iconImg.src = w.icon;
+        iconImg.style.display = 'block';
+        iconImg.alt = w.condition || 'weather icon';
+      } else {
+        iconImg.style.display = 'none';
+      }
+      currentSection.style.display = 'block';
+    }
+
+    function renderForecast(list) {
+      if (!list || !list.length) {
+        forecastSection.style.display = 'none';
+        return;
+      }
+      forecastGrid.innerHTML = list.map(day => `
+        <div class="card">
+          <div class="card-title">${day.date || '—'}</div>
+          <div class="metric"><strong>Max:</strong> ${fmt(day.maxTemp)}°C</div>
+          <div class="metric"><strong>Avg:</strong> ${fmt(day.avgTemp)}°C</div>
+          <div class="metric"><strong>Min:</strong> ${fmt(day.minTemp)}°C</div>
+        </div>
+      `).join('');
+      forecastSection.style.display = 'block';
+    }
+
+    const fmt = (v) => v != null ? Number(v).toFixed(1) : '—';
+
+    fetchBtn.addEventListener('click', fetchWeather);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') fetchWeather();
+    });
+
+    // Initial fetch for default city
+    fetchWeather();
+  </script>
+</body>
+</html>
+
